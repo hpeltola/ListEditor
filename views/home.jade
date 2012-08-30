@@ -1,0 +1,23 @@
+block message
+  if (typeof(message) != 'undefined')
+    p #{message}
+
+
+
+extends layout
+
+block content
+  script
+    var socket = io.connect();
+    socket.on('news', function (data) {
+        console.log(data);
+        socket.emit('my other event', { my: 'data' });
+    });
+  
+
+  h1 Welcome
+  block message
+  a(href='/register') Register
+
+
+

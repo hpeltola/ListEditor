@@ -1,0 +1,45 @@
+extends layout
+
+block scripts
+  script
+    
+    var init_lists = !{JSON.stringify(lists)};
+
+    var socket = io.connect();
+    socket.on('listname_update', function(data) {
+      
+      $("li#"+data.list_id+" a").text(data.list_name);
+        //if( $("li a#"+list_id).text() != data.list_name ){
+        //  $("h3#listname").text(data.list_name);
+        //}
+      //}
+    });
+
+    function reloadLists(listss){
+      // Remove old data
+      var ul = $("ul");
+      ul.empty();
+
+      $.each(listss, function(i, list){
+        ul.append("<li id='"+list.id+"'><a href='/list/"+list.id+"'>" + list.name + "</a></li>");       
+      });
+
+    }
+
+    $(document).ready(function(){
+      reloadLists(init_lists);
+    });
+
+block content
+  block scripts
+  div#lists
+    h3 Lists
+      ul
+
+      
+    
+  div#createList
+    form(action='/list', method='post')
+      b Create new list:
+      input(id='listname',type='text',name='listname')
+      input(type='submit',value='Create',data-transition='fade', data-theme='c')

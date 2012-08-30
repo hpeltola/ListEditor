@@ -1,0 +1,127 @@
+extends layout
+
+block scripts
+
+ script
+
+    var init_items = !{JSON.stringify(list_items)};
+
+    var socket = io.connect();
+    socket.on('list_update', function (data) {
+      if( data.list_id == #{list_id} ){
+        reloadItems(data.list_items);
+      }      
+    });
+
+    socket.on('listname_update', function(data) {
+      if( data.list_id == #{list_id} ){
+        if( $("h3#listname").text() != data.list_name ){
+          $("h3#listname").text(data.list_name);
+        }
+      }
+    });
+
+    socket.on('itemname_update', function(data) {
+      if( data.list_id == #{list_id} ){
+        if( $("ul#list li#" + data.item_id).text() != data.item_name ){
+          $("ul#list li#" + data.item_id).text(data.item_name);
+        }
+      }
+    });
+
+    socket.on('itemdone_update', function(data) {
+      if( data.list_id == #{list_id} ){
+        if( data.item_done ){
+          $("ul#list li#" + data.item_id).attr("class", "not_done");
+        }
+        else{
+          $("ul#list li#" + data.item_id).attr("class", "done");
+        }
+      }
+    });
+
+    function creteNewItem(){
+      var itemname = $("input#itemname").val();
+      if( itemname === undefined || itemname == "" ){
+        alert('give item a name');
+      }
+      else{
+        socket.emit("item", { type: "new_item", user_id: "#{user_id}", list_id: #{list_id}, item_name: itemname});
+        $("input#itemname").val('');
+      }
+    }
+
+    function markItem (listID, itemID)
+     {
+        socket.emit("item", { type: "mark_item", user_id: "#{user_id}", list_id: listID, item_id: itemID});
+     }
+
+    function reloadItems(rows){
+      // Remove old data
+      var ul = $("ul");
+      ul.empty();
+   
+      $.each(rows, function(i, row){
+        ul.append("<li id='"+row.id+"'>" + row.name + "</li>");
+        $("li#"+row.id).attr('contenteditable', 'true');
+        if( row.done ){
+          $("li#"+row.id).addClass("done");
+        }        
+      });
+
+      sort();
+
+      $("ul#list li").keypress(function(e){return e.which != 13; });
+      $("ul#list li").bind('input', function(e){
+        socket.emit("item", {type: 'edit_name', user_id: #{user_id}, list_id: #{list_id}, item_id: e.currentTarget.id, item_name: this.innerText});
+      });
+    }
+    function sort(){
+        var items = $('li');
+        items.sort(function(a,b){
+          return a.id-b.id
+        });
+        $("ul#list").append(items);
+    }
+
+    
+    $(document).ready(function(){
+      reloadItems(init_items);
+      $("input#itemname").keypress(function(e){
+        if( e.which == 13 ){
+          creteNewItem();
+        }
+      });
+
+
+      $("h3#listname").keypress(function(e){return e.which != 13; });
+      $("h3#listname").bind('input', function(e){       
+        socket.emit("list", {type: 'updateName', user_id: #{user_id}, list_id: #{list_id},list_name: this.innerText});
+      });
+
+      
+      
+      
+    });
+
+
+
+block content
+  block scripts
+  div
+    button(onclick='location.href="/list/#{list_id}"')#list_edit To Mark mode
+    h3(contenteditable=true, id='listname') #{list_name} - Edit mode
+    ul#list.edit_list
+     
+
+                  
+ 
+
+    
+  div#createItem
+    
+    b Create new item:
+    input(id='itemname',type='text',name='itemname')
+    input(type='submit',value='Create', OnClick='creteNewItem()')
+
+
