@@ -42,7 +42,11 @@ ul.edit_list{
   outline:2px solid LightGrey;
 }
 
-ul.edit_list li{
+ul#list li{
+  transition: bottom 0.5s, top 0.5s, transform 0.5s;
+  -moz-transition: bottom 0.5s, top 0.5s, -moz-transform 0.5s;
+  -webkit-transition: bottom 0.5s, top 0.5s, -webkit-transform 0.5s;
+  -o-transition: bottom 0.5s, top 0.5s,-o-transform 0.5s;
 }
 
 .done{

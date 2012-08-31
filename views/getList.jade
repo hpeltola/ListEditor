@@ -5,6 +5,10 @@ block scripts
  script
 
     var init_items = !{JSON.stringify(list_items)};
+    var item_types = !{JSON.stringify(list_item_types)};
+
+    var sort_order = "default";
+
 
     var socket = io.connect();
     socket.on('list_update', function (data) {
@@ -40,13 +44,21 @@ block scripts
       }
     });
 
+    socket.on('itemtype_update', function(data) {
+      if( data.list_id == #{list_id} ){
+        $("ul#list li#" + data.item_id).attr('item_type_id',data.item_type_id);
+        sort();
+      }
+    });
+
     function creteNewItem(){
       var itemname = $("input#itemname").val();
+      var selectedtype = $("select#new_item_type").val(); 
       if( itemname === undefined || itemname == "" ){
         alert('give item a name');
-      }
+      }     
       else{
-        socket.emit("item", { type: "new_item", user_id: "#{user_id}", list_id: #{list_id}, item_name: itemname});
+        socket.emit("item", { type: "new_item", user_id: "#{user_id}", list_id: #{list_id}, item_name: itemname, item_type_id: selectedtype});
         $("input#itemname").val('');
       }
     }
@@ -62,27 +74,16 @@ block scripts
       ul.empty();
    
       $.each(rows, function(i, row){
-        ul.append("<li id='"+row.id+"'>" + row.name + "</li>");
+        ul.append("<li id='"+row.id+"'>" + row.name + " "+ row.id + "</li>");
         $("li#"+row.id).attr('onclick', 'markItem("'+row.list_id+'","'+row.id+'")');
-        //$("li#"+row.id).attr('draggable', 'true');
+        $("li#"+row.id).attr('item_type_id', row.list_item_type_id);
         if( row.done ){
           $("li#"+row.id).addClass("done");
         }        
       });
 
       sort();
-    }
-    function sort(){
-        var items = $('li');
-        items.sort(function(a,b){
-          return a.id-b.id
-        });
-        $("ul#list").append(items);
-    }
 
-    
-    $(document).ready(function(){
-      reloadItems(init_items);
       $("input#itemname").keypress(function(e){
         if( e.which == 13 ){
           creteNewItem();
@@ -92,7 +93,85 @@ block scripts
       $("h3#listname").bind('input', function(e){       
         socket.emit("list", {type: 'updateName', user_id: #{user_id}, list_id: #{list_id},list_name: this.innerText});
       });
+
+
+    }
+
+    function sort(){
+      var items = $("ul#list li");
+      // orig item order
+      var orig_item_ids = new Array();        
+      // orig offsets in order
+      var orig_offsets = new Array();
+
+      $.each(items, function(i, item){
+        orig_offsets.push( $(item).offset().top );
+        orig_item_ids.push(item.id);
+      });
+
+      if( sort_order == "default" ){
+        items.sort(function(a,b){
+          return a.id-b.id;
+        });
+        $("ul#list").append(items);
+        return;
+      }
+      else if( sort_order == "alpha" ){
+        items.sort(function(a,b){          
+          if (a.innerText > b.innerText){ return 1; }
+          else if (b.innerText > a.innerText){ return -1; }
+          else{ return 0; }
+        });
+      }
+      else if( sort_order == "id" ){
+        items.sort(function(a,b){
+          return a.id-b.id;
+        });
+      }
+      else if( sort_order == "shop" ){
+       
+        items.sort(function(a,b){
+          
+          if (a.getAttribute('item_type_id') > b.getAttribute('item_type_id')){     
+            return 1; 
+          }
+          else if (b.getAttribute('item_type_id') > a.getAttribute('item_type_id')){ 
+            return -1; 
+          }
+          else{
+            return 0; 
+          }
+          
+
+        });
+      }
       
+      // Make the transitions here
+      $.each(items, function(i, item){
+        $.each(orig_item_ids, function(j, orig_item_id){
+          if( item.id == orig_item_id){            
+            $(item).offset( {top: orig_offsets[i] });
+          }
+        });
+      });
+ 
+      setTimeout(function(){
+        $(items).css('top', 0);
+        $(items).css('left', 0);
+        $(items).css('position', 'static');
+        $("ul#list").append(items);
+      }, 500);
+      //$("ul#list").append(items);
+    }
+
+    function sortBy(order){
+      sort_order = order;
+      sort();
+    }
+
+    
+    $(document).ready(function(){
+      reloadItems(init_items);      
     });
 
 
@@ -101,6 +180,12 @@ block content
   block scripts
   div
     button(onclick='location.href="/list/#{list_id}/edit"')#list_edit To edit mode
+
+    | order: 
+    button(onclick='sortBy("alpha")') alphabetical
+    button(onclick='sortBy("id")') ID
+    button(onclick='sortBy("shop")') shop
+
     h3(contenteditable=true, id='listname') #{list_name}
     ul#list
      
@@ -112,6 +197,10 @@ block content
   div#createItem
     
     b Create new item:
+    select(id="new_item_type")
+      each itemtype in list_item_types
+        option(value=itemtype.id) #{itemtype.name}
+        
     input(id='itemname',type='text',name='itemname')
     input(type='submit',value='Create', OnClick='creteNewItem()')
 

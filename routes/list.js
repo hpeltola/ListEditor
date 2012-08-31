@@ -40,22 +40,34 @@ exports.getList = function(req, res){
           res.render('error', {title: "Error", message: "Problem getting list_items from database", user_id: user_id});
         }
         else{
-          if( req.route.path == "/list/:list_id"){
-            // This is the normal view
-            res.render('getList', {title: "List items", 
-                                  list_name: list[0].name,
-                                  list_items: rows,
-                                  list_id: list_id,
-                                  user_id: user_id});
-          }
-          else if( req.route.path == "/list/:list_id/edit"){
-            // This is the edit view
-            res.render('editList', {title: "List items", 
-                                    list_name: list[0].name,
-                                    list_items: rows,
-                                    list_id: list_id,
-                                    user_id: user_id});
-          }
+          sql = "SELECT * FROM list_item_types";
+          common.connection.query(sql, function(err, types){
+            if( err ){
+             console.log(err);
+             res.render('error', {title: "Error", message: "Problem getting list_item_typess from database", user_id: user_id});
+            }
+            else{  
+              console.log(types);
+              if( req.route.path == "/list/:list_id"){
+                // This is the normal view
+                res.render('getList', {title: "List items", 
+                                      list_name: list[0].name,
+                                      list_items: rows,
+                                      list_id: list_id,
+                                      list_item_types: types,
+                                      user_id: user_id});
+              }
+              else if( req.route.path == "/list/:list_id/edit"){
+                // This is the edit view
+                res.render('editList', {title: "List items", 
+                                        list_name: list[0].name,
+                                        list_items: rows,
+                                        list_id: list_id,
+                                        list_item_types: types,
+                                        user_id: user_id});
+              }
+            }
+          });
         }
       });
     }

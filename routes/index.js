@@ -19,14 +19,13 @@ exports.setIOConnection = function(){
         item.markItem(data.user_id, data.list_id, data.item_id);
       }
       else if( data.type == "new_item" ){
-        item.createItem(data.user_id, data.list_id, data.item_name);
+        item.createItem(data.user_id, data.list_id, data.item_name, data.item_type_id);
       }
       else if( data.type == "edit_name" ){
-       console.log("--------------------------------");
-       console.log("---------edit_name--------------");
-       console.log(data);
-       console.log("--------------------------------");
        item.editName(data.user_id, data.list_id, data.item_id, data.item_name);
+      }
+      else if( data.type == "edit_item_type"){
+       item.editItemType(data.user_id, data.list_id, data.item_id, data.item_type_id); 
       }
     });
     socket.on('list', function(data){

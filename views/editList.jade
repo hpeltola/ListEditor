@@ -5,6 +5,13 @@ block scripts
  script
 
     var init_items = !{JSON.stringify(list_items)};
+    var item_types = !{JSON.stringify(list_item_types)};
+
+    var html_select_options = "";
+
+    $.each(item_types, function(j, item_type){
+      html_select_options += "<option value='" + item_type.id + "'>"+item_type.name+"</option>"      
+    });
 
     var socket = io.connect();
     socket.on('list_update', function (data) {
@@ -23,8 +30,9 @@ block scripts
 
     socket.on('itemname_update', function(data) {
       if( data.list_id == #{list_id} ){
-        if( $("ul#list li#" + data.item_id).text() != data.item_name ){
-          $("ul#list li#" + data.item_id).text(data.item_name);
+        var tmp_item = $("ul#list li#" + data.item_id + " span");
+        if( tmp_item.text() != data.item_name ){
+          tmp_item.text(data.item_name);
         }
       }
     });
@@ -40,13 +48,20 @@ block scripts
       }
     });
 
+    socket.on('itemtype_update', function(data) {
+      if( data.list_id == #{list_id} ){
+        $("ul#list li#" + data.item_id + " select").val(data.item_type_id);
+      }
+    });
+
     function creteNewItem(){
       var itemname = $("input#itemname").val();
+      var selectedtype = $("select#new_item_type").val();
       if( itemname === undefined || itemname == "" ){
         alert('give item a name');
       }
       else{
-        socket.emit("item", { type: "new_item", user_id: "#{user_id}", list_id: #{list_id}, item_name: itemname});
+        socket.emit("item", { type: "new_item", user_id: "#{user_id}", list_id: #{list_id}, item_name: itemname, item_type_id: selectedtype});
         $("input#itemname").val('');
       }
     }
@@ -56,20 +71,46 @@ block scripts
         socket.emit("item", { type: "mark_item", user_id: "#{user_id}", list_id: listID, item_id: itemID});
      }
 
+    function changeItemType(listID, itemID, typeID){
+      socket.emit("item", { type: "edit_item_type", user_id: "#{user_id}", list_id: listID, item_id: itemID, item_type_id: typeID});
+    }
+
     function reloadItems(rows){
       // Remove old data
       var ul = $("ul");
       ul.empty();
    
+      // Go through each row
       $.each(rows, function(i, row){
-        ul.append("<li id='"+row.id+"'>" + row.name + "</li>");
+        
+        // Create the row with name
+        ul.append("<li id='"+row.id+"'><span>" + row.name + "</span></li>");
+        // Make text editable
         $("li#"+row.id).attr('contenteditable', 'true');
+        // Is the row marked as done
         if( row.done ){
           $("li#"+row.id).addClass("done");
-        }        
+        }  
+ 
+        // Set select
+        $("li#"+row.id).prepend("<select id=item_type_" + row.id + "></select>");
+        // And all select options
+        $("select#item_type_"+row.id).append( html_select_options );
+        // Set value
+        $("select#item_type_"+row.id).val(row.list_item_type_id);
+        
+        $("select#item_type_"+row.id).attr('onchange','changeItemType("#{list_id}",'+row.id+',this.value)');
+        
+             
       });
 
       sort();
+
+      $("input#itemname").keypress(function(e){
+        if( e.which == 13 ){
+          creteNewItem();
+        }
+      });
 
       $("ul#list li").keypress(function(e){return e.which != 13; });
       $("ul#list li").bind('input', function(e){
@@ -87,20 +128,6 @@ block scripts
     
     $(document).ready(function(){
       reloadItems(init_items);
-      $("input#itemname").keypress(function(e){
-        if( e.which == 13 ){
-          creteNewItem();
-        }
-      });
-
-
-      $("h3#listname").keypress(function(e){return e.which != 13; });
-      $("h3#listname").bind('input', function(e){       
-        socket.emit("list", {type: 'updateName', user_id: #{user_id}, list_id: #{list_id},list_name: this.innerText});
-      });
-
-      
-      
       
     });
 
@@ -121,6 +148,10 @@ block content
   div#createItem
     
     b Create new item:
+    select(id="new_item_type")
+      each itemtype in list_item_types
+        option(value=itemtype.id) #{itemtype.name}
+
     input(id='itemname',type='text',name='itemname')
     input(type='submit',value='Create', OnClick='creteNewItem()')
 
